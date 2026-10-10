@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Leaderboard } from "@/components/Leaderboard";
 import { DemoBadge } from "@/components/AppShell";
 import { leagueQuery, topPlayersQuery } from "@/lib/data";
+import { RoleChoices } from "@/components/RoleChoices";
+import { useAuth } from "@/hooks/use-auth";
+import { setPendingRole, type AppRole } from "@/lib/role-selection";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,6 +27,7 @@ export const Route = createFileRoute("/")({
 function Landing() {
   const [code, setCode] = useState("");
   const nav = useNavigate();
+  const { user, loading } = useAuth();
   const top = useQuery(topPlayersQuery);
   const league = useQuery(leagueQuery("all"));
 
@@ -40,10 +44,19 @@ function Landing() {
             <p className="mt-5 max-w-lg text-muted-foreground">
               A live multiplayer aptitude arena for college students. Same question, same clock, up to 50 players — scored by the server, ranked in real time.
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Button variant="hero" size="lg" asChild><Link to="/play">Play Now <ArrowRight /></Link></Button>
-              <Button variant="glass" size="lg" asChild><Link to="/host">Host a Quiz</Link></Button>
-            </div>
+            {loading ? (
+              <div className="mt-7 h-36 animate-pulse rounded-2xl bg-surface/50" />
+            ) : user ? (
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Button variant="hero" size="lg" asChild><Link to="/dashboard">Player Dashboard <ArrowRight /></Link></Button>
+                <Button variant="glass" size="lg" asChild><Link to="/host">Host Dashboard</Link></Button>
+              </div>
+            ) : (
+              <div className="mt-7">
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-muted-foreground">Choose your role to continue</h2>
+                <RoleChoices onSelect={(role: AppRole) => { setPendingRole(role); nav({ to: "/auth" }); }} />
+              </div>
+            )}
             <form
               className="glass mt-8 flex max-w-md gap-2 p-2"
               onSubmit={(e) => {

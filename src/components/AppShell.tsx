@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   Home, LayoutDashboard, Dumbbell, Swords, Radio, Library, Trophy, LineChart, School, Tv, User, Zap, LogIn, LogOut,
@@ -6,6 +6,8 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { clearPendingRole } from "@/lib/role-selection";
+import { toast } from "sonner";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
@@ -34,16 +36,29 @@ export function Logo() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const nav = useNavigate();
   if (path.startsWith("/spectate/")) return <>{children}</>;
   const isActive = (to: string) => (to === "/" ? path === "/" : path.startsWith(to));
+  const visibleNav = NAV.filter(({ to }) => {
+    if (to === "/host" || to === "/sets") return profile?.role === "host";
+    if (to === "/dashboard" || to === "/performance" || to === "/profile") return !!user;
+    return true;
+  });
+
+  async function signOut() {
+    clearPendingRole();
+    const { error } = await supabase.auth.signOut();
+    if (error) return toast.error(error.message);
+    nav({ to: "/" });
+  }
 
   return (
     <div className="min-h-screen lg:pl-64">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar backdrop-blur-xl lg:flex">
         <div className="px-6 py-6"><Logo /></div>
         <nav className="flex-1 space-y-1 overflow-y-auto px-3" aria-label="Main">
-          {NAV.map(({ to, label, icon: Icon }) => (
+          {visibleNav.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
               to={to}
@@ -63,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {(user.email ?? "?")[0].toUpperCase()}
               </div>
               <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{user.email}</div>
-              <button aria-label="Sign out" onClick={() => supabase.auth.signOut()} className="text-muted-foreground hover:text-foreground">
+              <button aria-label="Sign out" onClick={signOut} className="text-muted-foreground hover:text-foreground">
                 <LogOut className="size-4" />
               </button>
             </div>
@@ -78,13 +93,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <details className="relative">
           <summary className="cursor-pointer list-none rounded-lg border border-border px-3 py-1.5 text-sm">Menu</summary>
           <div className="glass absolute right-0 mt-2 w-56 p-2">
-            {NAV.map(({ to, label, icon: Icon }) => (
+            {visibleNav.map(({ to, label, icon: Icon }) => (
               <Link key={to} to={to} className={cn("flex items-center gap-3 rounded-md px-3 py-2 text-sm", isActive(to) ? "text-primary" : "text-muted-foreground")}>
                 <Icon className="size-4" /> {label}
               </Link>
             ))}
             {user ? (
-              <button onClick={() => supabase.auth.signOut()} className="flex w-full items-center gap-3 px-3 py-2 text-sm text-muted-foreground"><LogOut className="size-4" /> Sign out</button>
+              <button onClick={signOut} className="flex w-full items-center gap-3 px-3 py-2 text-sm text-muted-foreground"><LogOut className="size-4" /> Sign out</button>
             ) : (
               <Link to="/auth" className="flex items-center gap-3 px-3 py-2 text-sm text-primary"><LogIn className="size-4" /> Sign in</Link>
             )}
@@ -95,7 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-8">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-background/90 backdrop-blur-xl lg:hidden" aria-label="Quick">
-        {NAV.filter((n) => MOBILE.includes(n.to)).map(({ to, label, icon: Icon }) => (
+        {visibleNav.filter((n) => MOBILE.includes(n.to)).map(({ to, label, icon: Icon }) => (
           <Link key={to} to={to} className={cn("flex flex-col items-center gap-1 py-2 text-[10px]", isActive(to) ? "text-primary" : "text-muted-foreground")}>
             <Icon className="size-5" /> {label.split(" ")[0]}
           </Link>

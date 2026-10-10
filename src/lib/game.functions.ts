@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireHostAuth, requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   db,
   sha256,
@@ -39,22 +39,32 @@ async function optionalUserId(): Promise<string | null> {
 
 // ---------- Host ----------
 export const createRoom = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireHostAuth])
   .validator((d) =>
     z.object({ setId: z.string().uuid(), name: z.string().trim().min(2).max(80) }).parse(d),
   )
   .handler(async ({ data, context }) => {
     // Authorization: caller must be able to read the set (own or sample) under RLS.
-    const { data: set } = await context.supabase
+    const { data: set, error: setError } = await context.supabase
       .from("question_sets")
       .select("id, title, status")
       .eq("id", data.setId)
       .maybeSingle();
+    if (setError) {
+      console.error("[Rooms] Could not load the selected question set:", setError.code);
+      throw new Error("Could not load that question set. Refresh the page and try again.");
+    }
     if (!set) throw new Error("Question set not found");
-    const { count } = await db()
+    const { count, error: countError } = await db()
       .from("questions")
       .select("id", { count: "exact", head: true })
       .eq("set_id", set.id);
+    if (countError) {
+      console.error("[Rooms] Could not count questions:", countError.code);
+      throw new Error(
+        "Could not check this question set. Check the server Supabase key and database setup.",
+      );
+    }
     if (!count) throw new Error("This question set has no questions yet");
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = randomCode();
@@ -72,8 +82,15 @@ export const createRoom = createServerFn({ method: "POST" })
         .select("code")
         .single();
       if (!error && room) return { code: room.code };
+      if (error?.code === "23505") continue;
+      if (error) {
+        console.error("[Rooms] Could not create room:", error.code, error.message);
+        throw new Error(
+          "Supabase could not create the room. Check the server key and database migrations.",
+        );
+      }
     }
-    throw new Error("Could not allocate a room code, try again");
+    throw new Error("Could not allocate a unique room code. Please try again.");
   });
 
 async function hostRoom(code: string, userId: string): Promise<RoomRow> {
@@ -84,7 +101,7 @@ async function hostRoom(code: string, userId: string): Promise<RoomRow> {
 }
 
 export const hostAction = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireHostAuth])
   .validator((d) =>
     z
       .object({
@@ -119,7 +136,7 @@ export const hostAction = createServerFn({ method: "POST" })
   });
 
 export const getHostReport = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireHostAuth])
   .validator((d) => z.object({ code: codeSchema }).parse(d))
   .handler(async ({ data, context }) => {
     const room = await hostRoom(data.code, context.userId);

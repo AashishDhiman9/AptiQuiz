@@ -15,6 +15,13 @@
       "when": 1791612350825,
       "tag": "0001_participant_secrets",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791612400000,
+      "tag": "0002_host_roles_profiles",
+      "breakpoints": true
     }
   ]
 }

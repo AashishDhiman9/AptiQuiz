@@ -62,13 +62,9 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       throw new Error("Unauthorized: Only Bearer tokens are supported");
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.slice("Bearer ".length).trim();
     if (!token) {
       throw new Error("Unauthorized: No token provided");
-    }
-
-    if (token.split(".").length !== 3) {
-      throw new Error("Unauthorized: Invalid token");
     }
 
     const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
@@ -85,21 +81,42 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       },
     });
 
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims) {
-      throw new Error("Unauthorized: Invalid token");
-    }
-
-    if (!data.claims.sub) {
-      throw new Error("Unauthorized: No user ID found in token");
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data.user) {
+      const details = [error?.status ? `HTTP ${error.status}` : null, error?.code]
+        .filter(Boolean)
+        .join(", ");
+      console.error("[Supabase] Session token validation failed:", error?.status, error?.code);
+      throw new Error(
+        `Unauthorized: Supabase rejected this sign-in session${details ? ` (${details})` : ""}. Sign out and sign in again.`,
+      );
     }
 
     return next({
       context: {
         supabase,
-        userId: data.claims.sub,
-        claims: data.claims,
+        userId: data.user.id,
       },
     });
   },
 );
+
+export const requireHostAuth = createMiddleware({ type: "function" })
+  .middleware([requireSupabaseAuth])
+  .server(async ({ next, context }) => {
+    const { data: profile, error } = await context.supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", context.userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[Supabase] Could not verify Host role:", error.message);
+      throw new Error("Forbidden: Host permissions could not be verified");
+    }
+    if (profile?.role !== "host") {
+      throw new Error("Forbidden: Host approval is required for this action");
+    }
+
+    return next();
+  });

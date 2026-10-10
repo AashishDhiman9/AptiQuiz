@@ -193,18 +193,21 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          role: "player" | "host"
         }
         Insert: {
           college_id?: string | null
           created_at?: string
           display_name?: string
           id: string
+          role?: never
         }
         Update: {
           college_id?: string | null
           created_at?: string
           display_name?: string
           id?: string
+          role?: never
         }
         Relationships: [
           {
@@ -215,6 +218,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      host_requests: {
+        Row: {
+          requested_at: string
+          reviewed_at: string | null
+          status: "pending" | "approved" | "rejected"
+          user_id: string
+        }
+        Insert: {
+          requested_at?: string
+          reviewed_at?: never
+          status?: never
+          user_id: string
+        }
+        Update: {
+          requested_at?: never
+          reviewed_at?: never
+          status?: never
+          user_id?: never
+        }
+        Relationships: []
       }
       question_keys: {
         Row: {

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { z } from "zod";
 import { ArrowDown, ArrowUp, Gamepad2, Target, Timer, Trophy, CheckCircle2, XCircle } from "lucide-react";
 import { PageHeader, Stat, DemoBadge } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,11 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { myStatsQuery } from "@/lib/stats";
 import { leagueQuery } from "@/lib/data";
+import { getHostRequest, requestHostAccess } from "@/lib/profile";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  validateSearch: z.object({ access: z.literal("host").optional() }),
   head: () => ({
     meta: [
       { title: "Player Dashboard — AptiQuiz" },
@@ -22,15 +26,61 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { access } = Route.useSearch();
   const nav = useNavigate();
+  const queryClient = useQueryClient();
   const [code, setCode] = useState("");
   const s = useQuery(myStatsQuery(user?.id));
   const league = useQuery(leagueQuery("all"));
+  const hostRequest = useQuery({
+    queryKey: ["host-request", user?.id],
+    enabled: !!user && profile?.role !== "host",
+    queryFn: () => getHostRequest(user!.id),
+  });
+  const requestHost = useMutation({
+    mutationFn: () => requestHostAccess(user!.id),
+    onSuccess: async (request) => {
+      queryClient.setQueryData(["host-request", user?.id], request);
+      toast.success("Your Host access request is recorded");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
   const d = s.data;
   return (
     <div className="space-y-6">
       <PageHeader title="Player Dashboard" subtitle={user?.email ?? ""} />
+      {profile?.role !== "host" && (
+        <section className="glass flex flex-wrap items-center justify-between gap-4 p-5" aria-label="Host access request">
+          <div>
+            <h2 className="font-semibold">Want to host quizzes?</h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Host tools require approval. Your request is reviewed by the AptiQuiz project administrator.
+            </p>
+            {access === "host" && <p className="mt-2 text-sm text-warning">Host access is not approved for this account yet.</p>}
+            {hostRequest.data?.status === "pending" && <p className="mt-2 text-sm text-primary">Your request is pending review.</p>}
+            {hostRequest.data?.status === "rejected" && <p className="mt-2 text-sm text-muted-foreground">Your request was declined. Contact the project administrator if you need a review.</p>}
+            {hostRequest.isError && <p className="mt-2 text-sm text-destructive">Could not load your request: {(hostRequest.error as Error).message}</p>}
+          </div>
+          {hostRequest.data?.status === "approved" ? (
+            <Button variant="hero" onClick={() => window.location.reload()}>Refresh Host access</Button>
+          ) : (
+            <Button
+              variant="glass"
+              disabled={requestHost.isPending || !!hostRequest.data}
+              onClick={() => requestHost.mutate()}
+            >
+              {requestHost.isPending
+                ? "Submitting…"
+                : hostRequest.data?.status === "rejected"
+                  ? "Request declined"
+                  : hostRequest.data
+                    ? "Request submitted"
+                    : "Request Host access"}
+            </Button>
+          )}
+        </section>
+      )}
       <form className="glass flex flex-wrap items-center gap-3 p-4" onSubmit={(e) => { e.preventDefault(); if (code.length >= 4) nav({ to: "/play/$code", params: { code } }); }}>
         <span className="font-semibold">Join a competition</span>
         <Input aria-label="Room code" className="max-w-48 font-display tracking-[0.3em]" placeholder="CODE" maxLength={8} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />

@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: aptiquiz
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: bun install --frozen-lockfile && bun run build
+    startCommand: bun run start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: BUN_VERSION
+        value: 1.4.2
+      - key: NODE_ENV
+        value: production
+      - key: NITRO_PRESET
+        value: render-com
+      - key: HOST
+        value: 0.0.0.0
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
