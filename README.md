@@ -98,26 +98,26 @@ Beyond live question rounds, the implementation includes an individual performan
 
 ```text
 .
-â”œâ”€â”€ docs/screenshots/          # Instructions for adding real product screenshots
-â”œâ”€â”€ drizzle/
-â”‚   â”œâ”€â”€ migrations/            # PostgreSQL/Supabase schema and seed migrations
-â”‚   â””â”€â”€ schema.ts              # Drizzle schema
-â”œâ”€â”€ public/                    # Static public assets
-â”œâ”€â”€ src/
-â”‚   â”œâ”€â”€ components/            # App shell, leaderboard, timer, and UI primitives
-â”‚   â”œâ”€â”€ hooks/                 # Auth and live-room hooks
-â”‚   â”œâ”€â”€ integrations/supabase/ # Browser/server Supabase clients and auth middleware
-â”‚   â”œâ”€â”€ lib/                   # Game server functions, scoring, stats, and utilities
-â”‚   â”œâ”€â”€ routes/                # TanStack file-based pages
-â”‚   â”œâ”€â”€ test/                  # Shared test setup and route test
-â”‚   â”œâ”€â”€ router.tsx             # Router construction
-â”‚   â”œâ”€â”€ server.ts              # Server entry and error response handling
-â”‚   â””â”€â”€ start.ts               # TanStack Start middleware setup
-â”œâ”€â”€ supabase/config.toml       # Supabase CLI project configuration
-â”œâ”€â”€ .env.example               # Environment-variable template
-â”œâ”€â”€ bun.lock                   # Bun dependency lockfile
-â”œâ”€â”€ drizzle.config.ts          # Drizzle Kit configuration
-â””â”€â”€ vite.config.ts             # Vite and TanStack Start plugins
+├── docs/screenshots/          # Instructions for adding real product screenshots
+├── drizzle/
+│   ├── migrations/            # PostgreSQL/Supabase schema and seed migrations
+│   └── schema.ts              # Drizzle schema
+├── public/                    # Static public assets
+├── src/
+│   ├── components/            # App shell, leaderboard, timer, and UI primitives
+│   ├── hooks/                 # Auth and live-room hooks
+│   ├── integrations/supabase/ # Browser/server Supabase clients and auth middleware
+│   ├── lib/                   # Game server functions, scoring, stats, and utilities
+│   ├── routes/                # TanStack file-based pages
+│   ├── test/                  # Shared test setup and route test
+│   ├── router.tsx             # Router construction
+│   ├── server.ts              # Server entry and error response handling
+│   └── start.ts               # TanStack Start middleware setup
+├── supabase/config.toml       # Supabase CLI project configuration
+├── .env.example               # Environment-variable template
+├── bun.lock                   # Bun dependency lockfile
+├── drizzle.config.ts          # Drizzle Kit configuration
+└── vite.config.ts             # Vite and TanStack Start plugins
 ```
 
 ## Prerequisites
@@ -208,7 +208,7 @@ The sample set can be used for solo, untimed practice. Practice answers do not a
 For a correct answer, the game awards **1,000 base points plus a speed bonus of up to 500**:
 
 ```text
-speed bonus = floor(500 Ã— max(0, 1 âˆ’ elapsed time / question duration))
+speed bonus = floor(500 × max(0, 1 − elapsed time / question duration))
 correct answer = 1,000 + speed bonus
 incorrect answer = 0
 ```
@@ -238,12 +238,12 @@ There is no multiplayer integration test or 50-player load-test script in the re
 
 ### Observed results for this revision
 
-- `bun install --frozen-lockfile --dry-run` â€” passed.
-- `bun run lint` â€” exits with errors: the repo-wide run reports 793 `prettier/prettier` errors and 6 `react-refresh/only-export-components` warnings. ESLint on the files changed in this cleanup passes.
-- `bun run typecheck` â€” passed.
-- `bun run test` â€” passed: 2 test files and 8 tests.
-- `bun run build` â€” passed and generated the Nitro Node server at `.output/server/index.mjs`.
-- Production HTTP smoke check â€” 13 application URLs returned HTTP 200 from `bun run start`. This checks route responses; it does not exercise OAuth or a complete database-backed match.
+- `bun install --frozen-lockfile --dry-run` — passed.
+- `bun run lint` — exits with errors: the repo-wide run reports 793 `prettier/prettier` errors and 6 `react-refresh/only-export-components` warnings. ESLint on the files changed in this cleanup passes.
+- `bun run typecheck` — passed.
+- `bun run test` — passed: 2 test files and 8 tests.
+- `bun run build` — passed and generated the Nitro Node server at `.output/server/index.mjs`.
+- Production HTTP smoke check — 13 application URLs returned HTTP 200 from `bun run start`. This checks route responses; it does not exercise OAuth or a complete database-backed match.
 
 ## Security and privacy
 
@@ -308,4 +308,3 @@ No license file is present. All rights are reserved unless the project owner add
 ## Acknowledgments
 
 Thanks to the maintainers of React, TanStack, Vite, Tailwind CSS, Radix UI, Supabase, Drizzle, Bun, Vitest, Zod, and Lucide for the libraries used by this project. The sample database migration includes demonstration questions and clearly labelled demo match data.
-
